@@ -36,6 +36,9 @@ const userSchema = new Schema({
     },
     updatedAt:{
         type:String
+    },
+    lastLogin:{
+        type:String
     }
 });
 
@@ -45,7 +48,7 @@ userSchema.method('comparePassword',function(candidatePass,callback){
         callback(err,isMatch)
     })
 });
-
+userSchema.index({name:1,email:1}, { unique: true })
 
 userSchema.pre('save',function(next){
     const _user = this;

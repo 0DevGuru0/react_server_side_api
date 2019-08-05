@@ -5,6 +5,9 @@ import {
 
 import UserType from '../../types/userType';
 import Auth from '../../../services/helpers';
+import redis from 'redis';
+const redisClient = redis.createClient()
+
 const mutation = {
     SignIn: {
         type: UserType,
@@ -17,7 +20,7 @@ const mutation = {
             }
         },
         resolve(parentValue, { password, email }, req) {
-            console.log(password, email)
+            
             return Auth.SignIn({ email, password, req })
         }
     },
@@ -51,6 +54,9 @@ const mutation = {
         type: UserType,
         resolve(parentValue, args, req) {
             let user = req.user
+            if(!user){ throw new Error('you have been not signedIn yet!') }
+            redisClient.srem('online:users',user._id.toString())
+            redisClient.incrby('online:users:count',-1)
             req.logout()
             return user;
         }
@@ -65,10 +71,7 @@ const mutation = {
         resolve(parentValue, {
             email
         }, req) {
-            return Auth.sendEmailVerify({
-                email,
-                req
-            })
+            return Auth.sendEmailVerify({ email, req })
         }
     },
     sendResetPassEmail: {

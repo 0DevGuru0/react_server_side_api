@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/user';
-import PDFDocument from 'pdfkit'
+import PDFDocument from 'pdfkit';
+import _ from 'lodash';
+
+var Redis = require("ioredis");
+var redis = new Redis();
 
 const RootController = {}
 const PAGE_LIMIT_COUNT = 10;
@@ -48,31 +52,38 @@ RootController.rootPage = (req, res) => {
 RootController.usersList = (req, res,next) => {
     let page = +req.query.page
     let totalUsers;
+    let search = {'$or':[ { 'name': {'$regex':/sajj/} }, { 'email':{'$regex':/has/} } ]}
     if(page<1){ page = 1 }
-    User.find()
+    User.find(search)
     .countDocuments()
     .then(usersCount=>{
         totalUsers = usersCount;
         if(page>Math.ceil(totalUsers/PAGE_LIMIT_COUNT)){
             page = Math.ceil(totalUsers/PAGE_LIMIT_COUNT);
         }
-        return User.find()
+        return User.find(search)
             .skip( ( page-1 ) * PAGE_LIMIT_COUNT )
             .limit(PAGE_LIMIT_COUNT)
     })
-    .then((users)=>{
+    .then(async users=>{
         if(!users){return 'no user has been registered yet'}
-        let Users = users.map( ( {_id,name,email,isVerified} )=>{ return {_id,name,email,isVerified} })
+
+        let Users = users.map( ( {_id,name,email,isVerified,createdAt,lastLogin} )=>
+            //SOLVED: check for user online or offline by redis use users id(filterUsers)
+            redis.sismember('online:users',_id.toString()).then(res=>{
+                let status = res === 1 ? true : false;
+                return {_id,name,email,isVerified,status,createdAt,lastLogin} 
+            })
+        );
+        Users = await Promise.all(Users)
+
         let hasNextPage     = PAGE_LIMIT_COUNT * page < totalUsers
         let hasPreviousPage = page > 1;
         let lastPage        = Math.ceil(totalUsers/PAGE_LIMIT_COUNT)
+
         res.send({
-            Users,
-            totalUsers,
-            hasNextPage,
-            hasPreviousPage,
-            currentPage:page,
-            lastPage
+            Users, totalUsers, hasNextPage, hasPreviousPage, lastPage,
+            currentPage:page
         });
     }).catch(e=>{ next( new Error(e) ) })
 }
@@ -91,6 +102,8 @@ RootController.redirectToRoot = (req,res)=>{
      res.redirect('/');
 }
 RootController.logOut = async (req,res)=>{
+    let user = req.user
+    await redis.srem('online:users',user.id)
     await req.logout();
     res.redirect('/');
 }

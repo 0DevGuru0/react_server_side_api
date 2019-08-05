@@ -29,21 +29,41 @@ const googleOption = {
 const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshToken,profile,done)=>{
     const existingUser = await User.findOne({googleId:profile.id});
     if(existingUser){ 
+
         redisClient.hset('lastLogIn',existingUser.id,moment().format())
-        return done(null,existingUser) }
-        const newUser = new User({
-            name:profile.displayName,
-            email:profile.emails[0].value,
-            password:profile.id,
-            googleId:profile.id,
-            createdAt:moment().format(),
-            updatedAt:null,
-            isVerified:true
-        })
-        newUser.save((err,user,row)=>{
-            if(err){return done(err,null)}
-            done(null,user);
-        })
+        redisClient.sadd('online:users',existingUser.id)
+        redisClient.incrby('online:users:count',1)
+        redisClient.sadd(
+            `online:users:list:${moment().format('YYYY/MM/DD')}`,
+            existingUser.id
+        )
+
+        await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
+        return done(null,existingUser) 
+
+    }
+    const newUser = new User({
+        name:profile.displayName,
+        email:profile.emails[0].value,
+        password:profile.id,
+        googleId:profile.id,
+        createdAt:moment().format(),
+        lastLogin:moment().format(),
+        updatedAt:null,
+        isVerified:true
+    })
+    newUser.save((err,user,row)=>{
+        // TODO:restrict user info 
+        // const client = Object.keys(user)
+        //     .filter(el=>['name','email',"_id"].includes(el))
+        //     .reduce((obj, key) => {
+        //         obj[key] = user[key];
+        //         return obj;
+        //     }, {});
+        redisClient.sadd('online:users',user.id)
+        if(err){return done(err,null)}
+        done(null,user);
+    })
 });
 /////////////////// Local Authentication ///////////////////////////
 const LocalOption = {usernameField:'email'}
@@ -51,10 +71,12 @@ const LocalAuth = new LocalStrategy(LocalOption,(email,password,done)=>{
     User.findOne({email:email.toLowerCase()},(err,user)=>{
         if(err){return done(err)}
         if(!user){return done(null,false)}
-        user.comparePassword(password,(err,isMatch)=>{
+        user.comparePassword(password,async (err,isMatch)=>{
             if(err){return done(err)}
             if(isMatch){
+                await User.findByIdAndUpdate(user.id,{lastLogin:moment().format()})
                 redisClient.hset('lastLogIn',user.id,moment().format())
+                // TODO:restrict user info 
                 return done(null,user)
             }
             return done(null,false,'Invalid_Credential')

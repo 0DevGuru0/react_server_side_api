@@ -21,7 +21,8 @@ import '../models/user';
 require('../services/passport');
 /////////////////START DATABASE CONFIG///////////////////////////
 mongoose.connect(process.env.DB_ADDRESS, {
-    useNewUrlParser: true
+    useNewUrlParser: true,
+    useFindAndModify:false
 });
 mongoose.connection.on('connected', () => {
     console.log("connection established successfully")
@@ -64,7 +65,12 @@ app.use(bodyParser.urlencoded({
 app.use(hpp())
 app.disable('x-powered-by')
 
-const whiteList = [process.env.CORS_MAINSITE_ADDRESS, `http://localhost:${process.env.PORT}`];
+const whiteList = [
+    process.env.CORS_MAINSITE_ADDRESS,
+    process.env.CORS_MICRO_USERMANAGENT_ADDRESS,
+    'http://localhost:3000/',
+    `http://localhost:${process.env.PORT}`
+];
 const corsOptionsDelegate = {
     origin: (origin, cb) => {
         (whiteList.indexOf(origin) !== -1 || !origin) ?

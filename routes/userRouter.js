@@ -1,8 +1,10 @@
 import express from 'express';
 import passport from 'passport'
 import requireLogin from '../middlewares/requireLogin'
+import requireNotLoggedIn from '../middlewares/requireNotLogin'
 import rootCtr from '../controllers/root';
 import ipInfo from '../controllers/ipInfo';
+
 const router = express.Router();
 
 const googleAuth = passport.authenticate('google', {
@@ -11,15 +13,18 @@ const googleAuth = passport.authenticate('google', {
 const googleAuthCB = passport.authenticate('google')
 router.get(
    '/auth/google',
+   requireNotLoggedIn,
    googleAuth
 );
 router.get(
    '/api/auth/google/callback',
+   requireNotLoggedIn,
    googleAuthCB,
    rootCtr.redirectToRoot
 )
 router.get(
    '/auth/google/callback',
+   requireNotLoggedIn,
    googleAuthCB,
    rootCtr.redirectToRoot
 )

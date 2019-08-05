@@ -2,7 +2,7 @@ const path             = require('path'),
     UglifyJsPlugin     = require('uglifyjs-webpack-plugin'),
     nodeExternals      = require('webpack-node-externals');
 module.exports= {
-    mode:"production",
+    mode:"development",
     entry:"./index.js",
     output:{
         filename:"bundle.js",
@@ -18,7 +18,7 @@ module.exports= {
             })
         ],
     },
-    devtool:"cheap-module-source-map",
+    devtool: "cheap-module-source-map",
     externals:[nodeExternals()],
     module:{
         rules:[

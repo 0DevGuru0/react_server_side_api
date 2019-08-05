@@ -8,10 +8,13 @@ import {
 const userType = new GraphQLObjectType({
     name:"UserType",
     fields:{
-        id:{type:GraphQLID},
+        _id:{type:GraphQLID},
         name:{ type:GraphQLString} ,
         email:{type:GraphQLString} ,
-        isVerified:{type:GraphQLBoolean}
+        isVerified:{type:GraphQLBoolean},
+        status:{type:GraphQLBoolean},
+        createdAt:{ type: GraphQLString },
+        lastLogin:{ type: GraphQLString }
     }
 });
 
