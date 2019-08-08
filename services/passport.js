@@ -29,41 +29,30 @@ const googleOption = {
 const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshToken,profile,done)=>{
     const existingUser = await User.findOne({googleId:profile.id});
     if(existingUser){ 
-
         redisClient.hset('lastLogIn',existingUser.id,moment().format())
         redisClient.sadd('online:users',existingUser.id)
         redisClient.incrby('online:users:count',1)
-        redisClient.sadd(
-            `online:users:list:${moment().format('YYYY/MM/DD')}`,
-            existingUser.id
-        )
-
+        redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}` ,existingUser.id)
         await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
         return done(null,existingUser) 
-
+    }else{
+        const newUser = new User({
+            name:profile.displayName,
+            email:profile.emails[0].value,
+            password:profile.id,
+            googleId:profile.id,
+            createdAt:moment().format(),
+            lastLogin:moment().format(),
+            updatedAt:null,
+            isVerified:true
+        })
+        newUser.save((err,user,row)=>{
+            redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id )
+            redisClient.sadd('online:users',user.id)
+            if(err){return done(err,null)}
+            return done(null,user);
+        })
     }
-    const newUser = new User({
-        name:profile.displayName,
-        email:profile.emails[0].value,
-        password:profile.id,
-        googleId:profile.id,
-        createdAt:moment().format(),
-        lastLogin:moment().format(),
-        updatedAt:null,
-        isVerified:true
-    })
-    newUser.save((err,user,row)=>{
-        // TODO:restrict user info 
-        // const client = Object.keys(user)
-        //     .filter(el=>['name','email',"_id"].includes(el))
-        //     .reduce((obj, key) => {
-        //         obj[key] = user[key];
-        //         return obj;
-        //     }, {});
-        redisClient.sadd('online:users',user.id)
-        if(err){return done(err,null)}
-        done(null,user);
-    })
 });
 /////////////////// Local Authentication ///////////////////////////
 const LocalOption = {usernameField:'email'}

@@ -49,7 +49,7 @@ Auth.SignUp = ({email,password,name,req})=>{
                     redisClient.sadd('online:users',user.id)
                     redisClient.incrby('online:users:count',1)
                     redisClient.sadd(
-                        `online:users:list:${moment().format('YYYY/MM/DD')}`,
+                        `online:users:list:${moment().format('YYYY/MM/D')}`,
                         user.id
                     )
                     // TODO:restrict user info 
@@ -65,27 +65,25 @@ Auth.SignIn = ({email,password,req})=>{
     let errors=[];
     
     if(validator.isEmpty(email) || validator.isEmpty(password)){ errors.push('type all credentials') }
-    
     if(!validator.isEmail(email)){ errors.push('type valid Email') }
     if(req.user){ errors.push(`you already logged in site[${req.user.email}]`) }
-    if( errors.length > 0 ){ throw new Error(errors) }    
-    return new Promise((res,rej)=>{
-        passport.authenticate('local', (err,user)=>{
-            if(!user){return rej('you are not registered yet please signUp first')}
-            if(err){return rej(err)}
-            req.login(user,err=>{
-                redisClient.sadd('online:users',user.id)
-                redisClient.incrby('online:users:count',1)
-                redisClient.sadd(
-                    `online:users:list:${moment().format('YYYY/MM/DD')}`,
-                    user.id
-                )
+    if( errors.length > 0 ){ throw new Error(errors) } 
+    if(!req.user){
+        return new Promise((res,rej)=>{
+            passport.authenticate('local', (err,user)=>{
+                if(!user){return rej('you are not registered yet please signUp first')}
                 if(err){return rej(err)}
-                // TODO:restrict user info 
-                return res(user)
-            })
-        })({body:{email,password}})
-    })
+                req.login(user,err=>{
+                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id )
+                    redisClient.sadd('online:users',user.id)
+                    redisClient.incrby('online:users:count',1)
+                    if(err){return rej(err)}
+                    // TODO:restrict user info 
+                    return res(user)
+                })
+            })({body:{email,password}})
+        })
+    }
 }
 
 Auth.sendEmailVerify = ({email,req})=>{

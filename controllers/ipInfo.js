@@ -30,28 +30,17 @@ ipInfo.storeSystem = async (cb,ip) => {
       let lastDay = moment().subtract(1, 'day').format('YYYY/M/D')
       redisClient.hgetall(lastDay, (error, result) => {
          if(error){
-            return cb(ErrorModel({
-               message:'Something went wrong on redis',
-               sourceCode:'FetchVisitorDataFromRedis',
-               errorDetail:error
-            })) 
+            return cb(ErrorModel({ message:'Something went wrong on redis', sourceCode:'FetchVisitorDataFromRedis', errorDetail:error })) 
          }
          if(result == null){
-            return cb(ErrorModel({
-               message:'receiving null as result for redis query ',
-               sourceCode:'FetchVisitorDataFromRedis',
-               errorDetail:'{queryResult:null}'
-            })) 
+            return cb(ErrorModel({ message:'receiving null as result for redis query ', sourceCode:'FetchVisitorDataFromRedis', errorDetail:'{queryResult:null}' })) 
          }
 
          //3|Store Fetched Data on Mongodb
          let errors = []
          for (let key in result) {
             let visitorIP_info = new IPINFO_DB(JSON.parse(result[key]))
-            let visitorIP = new IP_DB({
-               IP: key,
-               visitedDay: lastDay
-            });
+            let visitorIP = new IP_DB({ IP: key, visitedDay: lastDay });
             visitorIP.IPsInfo = visitorIP_info;
             Promise.all([
                visitorIP.save(),

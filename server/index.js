@@ -64,17 +64,12 @@ app.use(bodyParser.urlencoded({
 }))
 app.use(hpp())
 app.disable('x-powered-by')
-
-const whiteList = [
-    process.env.CORS_MAINSITE_ADDRESS,
-    process.env.CORS_MICRO_USERMANAGENT_ADDRESS,
-    'http://localhost:3000/',
-    `http://localhost:${process.env.PORT}`
-];
+const whiteList = process.env.CORS_WHITE_LIST
 const corsOptionsDelegate = {
     origin: (origin, cb) => {
-        (whiteList.indexOf(origin) !== -1 || !origin) ?
-        cb(null, true): cb(new Error('Not allowed by CORS'));
+        (whiteList.indexOf(origin) !== -1 || !origin)
+            ?cb(null, true)
+            :cb(new Error('Not allowed by CORS'));
     }
 }
 app.use(cors(corsOptionsDelegate))
