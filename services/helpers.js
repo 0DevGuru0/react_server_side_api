@@ -47,11 +47,9 @@ Auth.SignUp = ({email,password,name,req})=>{
                 req.login(user,err=>{
                     if(err){ rej(err)}
                     redisClient.sadd('online:users',user.id)
-                    redisClient.incrby('online:users:count',1)
-                    redisClient.sadd(
-                        `online:users:list:${moment().format('YYYY/MM/D')}`,
-                        user.id
-                    )
+                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
+                        if(reply === 1){ redisClient.incrby('online:users:count',1) }
+                    })
                     // TODO:restrict user info 
                     return res(user)
                 });
@@ -74,9 +72,10 @@ Auth.SignIn = ({email,password,req})=>{
                 if(!user){return rej('you are not registered yet please signUp first')}
                 if(err){return rej(err)}
                 req.login(user,err=>{
-                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id )
                     redisClient.sadd('online:users',user.id)
-                    redisClient.incrby('online:users:count',1)
+                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
+                        if(reply === 1){ redisClient.incrby('online:users:count',1) }
+                    })
                     if(err){return rej(err)}
                     // TODO:restrict user info 
                     return res(user)

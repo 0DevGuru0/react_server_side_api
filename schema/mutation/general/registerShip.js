@@ -6,6 +6,7 @@ import {
 import UserType from '../../types/userType';
 import Auth from '../../../services/helpers';
 import redis from 'redis';
+import moment from 'moment';
 const redisClient = redis.createClient()
 
 const mutation = {
@@ -56,7 +57,9 @@ const mutation = {
             let user = req.user
             if(!user){ throw new Error('you have been not signedIn yet!') }
             redisClient.srem('online:users',user._id.toString())
-            redisClient.incrby('online:users:count',-1)
+            redisClient.sismember(`online:users:list:${moment().format('YYYY/MM/D')}`,user.id,(err,reply)=>{
+                if(reply === 1){ redis.decr('online:users:count') }
+            })
             req.logout()
             return user;
         }

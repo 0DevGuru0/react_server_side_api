@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/user';
 import PDFDocument from 'pdfkit';
 import _ from 'lodash';
+import moment from 'moment';
 
 var Redis = require("ioredis");
 var redis = new Redis();
@@ -104,6 +105,9 @@ RootController.redirectToRoot = (req,res)=>{
 RootController.logOut = async (req,res)=>{
     let user = req.user
     await redis.srem('online:users',user.id)
+    await redis.sismember(`online:users:list:${moment().format('YYYY/MM/D')}`,user.id,(err,reply)=>{
+        if(reply === 1){ redis.decr('online:users:count') }
+    })
     await req.logout();
     res.redirect('/');
 }

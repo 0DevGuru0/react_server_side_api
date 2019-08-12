@@ -31,8 +31,9 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
     if(existingUser){ 
         redisClient.hset('lastLogIn',existingUser.id,moment().format())
         redisClient.sadd('online:users',existingUser.id)
-        redisClient.incrby('online:users:count',1)
-        redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}` ,existingUser.id)
+        redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}` ,existingUser.id,(err,reply)=>{
+            if(reply === 1){ redisClient.incrby('online:users:count',1) }
+        })
         await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
         return done(null,existingUser) 
     }else{
