@@ -5,12 +5,11 @@ import sgMail                from '@sendgrid/mail';
 import Verify_Email_Config   from '../emails/emailVerify';
 import Reset_Password_Config from '../emails/resetPassword';
 import jwt                   from 'jsonwebtoken';
-import moment from 'moment';
-import redis from 'redis';
+import moment                from 'moment';
+import redis                 from 'redis';
 const redisClient = redis.createClient()
-/*
- * Auth Object contain all logic for authentication
-*/
+
+/* Auth Object contain all logic for authentication */
 const Auth = {}
 
 Auth.SignUp = ({email,password,name,req})=>{
@@ -46,9 +45,13 @@ Auth.SignUp = ({email,password,name,req})=>{
             return new Promise((res,rej)=>{
                 req.login(user,err=>{
                     if(err){ rej(err)}
-                    redisClient.sadd('online:users',user.id)
                     redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
-                        if(reply === 1){ redisClient.incrby('online:users:count',1) }
+                        if(reply === 1){ 
+                            redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
+                                if(reply===1){ 
+                                    redisClient.incrby('online:users:count',1) }
+                            })
+                        }
                     })
                     // TODO:restrict user info 
                     return res(user)
@@ -72,9 +75,12 @@ Auth.SignIn = ({email,password,req})=>{
                 if(!user){return rej('you are not registered yet please signUp first')}
                 if(err){return rej(err)}
                 req.login(user,err=>{
-                    redisClient.sadd('online:users',user.id)
                     redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
-                        if(reply === 1){ redisClient.incrby('online:users:count',1) }
+                            redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
+                                if(reply === 1){ 
+                                    redisClient.incrby('online:users:count',1) 
+                                }
+                            })
                     })
                     if(err){return rej(err)}
                     // TODO:restrict user info 

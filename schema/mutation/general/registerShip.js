@@ -56,9 +56,8 @@ const mutation = {
         resolve(parentValue, args, req) {
             let user = req.user
             if(!user){ throw new Error('you have been not signedIn yet!') }
-            redisClient.srem('online:users',user._id.toString())
-            redisClient.sismember(`online:users:list:${moment().format('YYYY/MM/D')}`,user.id,(err,reply)=>{
-                if(reply === 1){ redis.decr('online:users:count') }
+            redisClient.hdel('online:Users',user._id.toString(),(err,reply)=>{
+                if(reply===1){ redisClient.incrby('online:users:count',-1) }
             })
             req.logout()
             return user;

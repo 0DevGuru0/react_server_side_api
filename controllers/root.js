@@ -3,19 +3,13 @@ import User from '../models/user';
 import PDFDocument from 'pdfkit';
 import _ from 'lodash';
 import moment from 'moment';
-
+const socket = require('socket.io-client')('https://localhost:3000');
 var Redis = require("ioredis");
 var redis = new Redis();
 
 const RootController = {}
 const PAGE_LIMIT_COUNT = 10;
-const admins = [
-    { id: 1, name: 'Kurtis Weissnat' },
-    { id: 2, name: 'Nicholas Runolfsdottir' },
-    { id: 3, name: 'Gelann Reichert' },
-    { id: 4, name: 'Moriah Stanton' },
-    { id: 5, name: 'Rey Padberg' }
-  ];
+const admins = [ { id: 1, name: 'Kurtis Weissnat' }, { id: 2, name: 'Nicholas Runolfsdottir' }, { id: 3, name: 'Gelann Reichert' }, { id: 4, name: 'Moriah Stanton' }, { id: 5, name: 'Rey Padberg' } ];
 
 RootController.rootPage = (req, res) => {
     let adminContent = `
@@ -104,10 +98,12 @@ RootController.redirectToRoot = (req,res)=>{
 }
 RootController.logOut = async (req,res)=>{
     let user = req.user
-    await redis.srem('online:users',user.id)
-    await redis.sismember(`online:users:list:${moment().format('YYYY/MM/D')}`,user.id,(err,reply)=>{
-        if(reply === 1){ redis.decr('online:users:count') }
-    })
+    await redis.hdel('online:Users',user.id,(err,reply)=>{
+        if(reply===1){ 
+            redis.incrby('online:users:count',-1) 
+            socket.emit('userEntered',false)
+        }
+    }) 
     await req.logout();
     res.redirect('/');
 }
@@ -181,4 +177,5 @@ RootController.printUsers =  (req,res,next)=>{
         pdfDoc.end();
     }).catch(e=>{ next(new Error(e)) })
 }
+
 export default RootController;

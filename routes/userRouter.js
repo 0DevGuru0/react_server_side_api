@@ -34,11 +34,6 @@ router.post(
    rootCtr.logOut
 )
 router.get(
-   '/logout',
-   requireLogin,
-   rootCtr.logOut
-)
-router.get(
    '/current_user',
    requireLogin,
    (req, res) => {res.send(req.user)}
@@ -65,4 +60,5 @@ router.post(
       res.end()
    }
 )
+
 export default router;

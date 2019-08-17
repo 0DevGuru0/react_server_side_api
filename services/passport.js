@@ -1,41 +1,37 @@
-import passport from 'passport';
-import {Strategy as GoogleStrategy } from 'passport-google-oauth20'
-import User from '../models/user';
-import path from 'path'
-import LocalStrategy from 'passport-local';
-import moment from 'moment';
-import redis from 'redis';
+import passport                         from 'passport';
+import {Strategy as GoogleStrategy }    from 'passport-google-oauth20'
+import User                             from '../models/user';
+import path                             from 'path'
+import LocalStrategy                    from 'passport-local';
+import moment                           from 'moment';
+import redis                            from 'redis';
 const redisClient = redis.createClient()
 
-require('dotenv').config({
-    path:path.resolve(process.cwd(),'config/keys/.env')
-})
+require('dotenv').config({ path:path.resolve(process.cwd(),'config/keys/.env') })
 
-passport.serializeUser((user,done)=>{
-    done(null,user.id)
-})
-
-passport.deserializeUser((id,done)=>{
-    User.findById(id).then(user=>{ done(null,user) })
-})
+passport.serializeUser((user,done)=>{ done(null,user.id) })
+passport.deserializeUser((id,done)=>{ User.findById(id).then(user=>{ done(null,user) }) })
 
 /////////////////// Google Authentication /////////////////////////
 const googleOption = {
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_AUTH_SUCCESS_CALLBACK,
-    proxy: true
+    clientID:       process.env.GOOGLE_CLIENT_ID,
+    clientSecret:   process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL:    process.env.GOOGLE_AUTH_SUCCESS_CALLBACK,
+    proxy:          true
 };
 const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshToken,profile,done)=>{
     const existingUser = await User.findOne({googleId:profile.id});
     if(existingUser){ 
+
         redisClient.hset('lastLogIn',existingUser.id,moment().format())
-        redisClient.sadd('online:users',existingUser.id)
-        redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}` ,existingUser.id,(err,reply)=>{
-            if(reply === 1){ redisClient.incrby('online:users:count',1) }
+        redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`,existingUser.id,(err,reply)=>{
+            redisClient.hsetnx('online:Users',existingUser.id,0,(err,reply)=>{
+                if(reply===1){ redisClient.incrby('online:users:count',1) }
+            })
         })
         await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
         return done(null,existingUser) 
+
     }else{
         const newUser = new User({
             name:profile.displayName,
@@ -49,12 +45,15 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
         })
         newUser.save((err,user,row)=>{
             redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id )
-            redisClient.sadd('online:users',user.id)
+            redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
+                if(reply===1){ redisClient.incrby('online:users:count',1) }
+            })
             if(err){return done(err,null)}
             return done(null,user);
         })
     }
 });
+
 /////////////////// Local Authentication ///////////////////////////
 const LocalOption = {usernameField:'email'}
 const LocalAuth = new LocalStrategy(LocalOption,(email,password,done)=>{
