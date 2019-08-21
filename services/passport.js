@@ -26,7 +26,7 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
         redisClient.hset('lastLogIn',existingUser.id,moment().format())
         redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`,existingUser.id,(err,reply)=>{
             redisClient.hsetnx('online:Users',existingUser.id,0,(err,reply)=>{
-                if(reply===1){ redisClient.incrby('online:users:count',1) }
+                if(+reply===1){ redisClient.incrby('online:users:count',1) }
             })
         })
         await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
@@ -46,7 +46,7 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
         newUser.save((err,user,row)=>{
             redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id )
             redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
-                if(reply===1){ redisClient.incrby('online:users:count',1) }
+                if(+reply===1){ redisClient.incrby('online:users:count',1) }
             })
             if(err){return done(err,null)}
             return done(null,user);

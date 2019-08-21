@@ -135,7 +135,7 @@ ipInfo.storeSystem = async (cb, ip) => {
       };
       ipData = JSON.stringify(ipData);
       redisClient.hset(`online:visitors:list:${Day}`, ip, ipData,(err,reply)=>{
-        if(reply === 1){
+        if(+reply === 1){
           redisClient.sadd(`online:visitors:Clist:${Day}`,ip)
         }
       });

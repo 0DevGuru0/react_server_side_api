@@ -57,7 +57,7 @@ const mutation = {
             let user = req.user
             if(!user){ throw new Error('you have been not signedIn yet!') }
             redisClient.hdel('online:Users',user._id.toString(),(err,reply)=>{
-                if(reply===1){ redisClient.incrby('online:users:count',-1) }
+                if(+reply===1){ redisClient.incrby('online:users:count',-1) }
             })
             req.logout()
             return user;

@@ -8,7 +8,9 @@ import jwt                   from 'jsonwebtoken';
 import moment                from 'moment';
 import redis                 from 'redis';
 const redisClient = redis.createClient()
-
+import { detect } from 'detect-browser';
+const browserObj = detect();
+const browser = browserObj.name+'_'+browserObj.version;
 /* Auth Object contain all logic for authentication */
 const Auth = {}
 
@@ -46,9 +48,9 @@ Auth.SignUp = ({email,password,name,req})=>{
                 req.login(user,err=>{
                     if(err){ rej(err)}
                     redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
-                        if(reply === 1){ 
+                        if(+reply === 1){ 
                             redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
-                                if(reply===1){ 
+                                if(+reply===1){ 
                                     redisClient.incrby('online:users:count',1) }
                             })
                         }
@@ -75,13 +77,41 @@ Auth.SignIn = ({email,password,req})=>{
                 if(!user){return rej('you are not registered yet please signUp first')}
                 if(err){return rej(err)}
                 req.login(user,err=>{
-                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
-                            redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
-                                if(reply === 1){ 
-                                    redisClient.incrby('online:users:count',1) 
-                                }
-                            })
+
+                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id, (err,reply)=>{
+                           
+                        /*
+                            check to see userID exist in online:Users bucket [signIn in another browser]
+                                -YES| check to see the userID have that browser on
+                                    - YES| increment browser connection 
+                                    _ NO|check to see the userId found or not if not reply must turn to object
+                                        + if reply length is zero increment online counts 
+                                        + get the reply one connection of  browser
+                                At the end resave the reply in online:user userID bucket
+                        */
+
+                        redisClient.hget('online:Users' , user.id,(err,reply)=>{
+                            console.log(typeof(browser))
+                            //     if(reply[browser]){
+                            //         reply[browser]= ++reply[browser]
+                            //     }else{
+                            //         if(!reply){ reply = {}; }
+                            //         if(Object.keys(reply).length === 0 ){ redisClient.incr('online:users:count') }
+                            //         reply[browser] = 1
+                            //     }
+                           
+                            // redisClient.hset( 'online:Users' , user.id , reply )
+                        })
+                        
+                        // redisClient.hsetnx('online:Users' , user.id , {1} , (err,reply)=>{
+                        //             if(+reply === 1){ 
+                        //                 redisClient.incr('online:users:count') 
+                        //             }else if (+reply === 0){
+                        //                 redisClient.hincrby('online:Users', user.id, 1)
+                        //             }
+                        //     })
                     })
+
                     if(err){return rej(err)}
                     // TODO:restrict user info 
                     return res(user)

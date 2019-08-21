@@ -24,7 +24,7 @@ RootController.rootPage = (req, res) => {
         <div>
             You appear to be logged in, so you can visit <a href="/admins">the Admins route</a>
             or you can
-            <form action="/logout" method="post">
+            <form action="/logout" method="get">
                 <input type="hidden" name="_csrf" value="${req.csrfToken()}"></input>
                 <button type="submit">Logout</button>
             </form>
@@ -99,7 +99,7 @@ RootController.redirectToRoot = (req,res)=>{
 RootController.logOut = async (req,res)=>{
     let user = req.user
     await redis.hdel('online:Users',user.id,(err,reply)=>{
-        if(reply===1){ 
+        if(+reply===1){ 
             redis.incrby('online:users:count',-1) 
             socket.emit('userEntered',false)
         }
