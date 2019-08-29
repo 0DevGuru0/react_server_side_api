@@ -7,10 +7,10 @@ import Reset_Password_Config from '../emails/resetPassword';
 import jwt                   from 'jsonwebtoken';
 import moment                from 'moment';
 import redis                 from 'redis';
+import parser                from 'ua-parser-js';
 const redisClient = redis.createClient()
-import { detect } from 'detect-browser';
-const browserObj = detect();
-const browser = browserObj.name+'_'+browserObj.version;
+
+
 /* Auth Object contain all logic for authentication */
 const Auth = {}
 
@@ -78,8 +78,7 @@ Auth.SignIn = ({email,password,req})=>{
                 if(err){return rej(err)}
                 req.login(user,err=>{
 
-                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id, (err,reply)=>{
-                           
+                    redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id, (err,reply)=>{    
                         /*
                             check to see userID exist in online:Users bucket [signIn in another browser]
                                 -YES| check to see the userID have that browser on
@@ -91,25 +90,18 @@ Auth.SignIn = ({email,password,req})=>{
                         */
 
                         redisClient.hget('online:Users' , user.id,(err,reply)=>{
-                            console.log(typeof(browser))
-                            //     if(reply[browser]){
-                            //         reply[browser]= ++reply[browser]
-                            //     }else{
-                            //         if(!reply){ reply = {}; }
-                            //         if(Object.keys(reply).length === 0 ){ redisClient.incr('online:users:count') }
-                            //         reply[browser] = 1
-                            //     }
-                           
-                            // redisClient.hset( 'online:Users' , user.id , reply )
+                            let {browser,os} = parser(req.headers['user-agent'])
+                            let browserContainer = browser.name+browser.major+":"+os.name+os.version
+                            reply = JSON.parse(reply)
+                            if( reply && reply[browserContainer] ){
+                                reply[browserContainer]= ++reply[browserContainer]
+                            }else{
+                                if(!reply){ reply = {}; }
+                                if(Object.keys(reply).length === 0 ){ redisClient.incr('online:users:count') }
+                                reply[browserContainer] = 1
+                            }
+                            redisClient.hset( 'online:Users' , user.id , JSON.stringify(reply) )
                         })
-                        
-                        // redisClient.hsetnx('online:Users' , user.id , {1} , (err,reply)=>{
-                        //             if(+reply === 1){ 
-                        //                 redisClient.incr('online:users:count') 
-                        //             }else if (+reply === 0){
-                        //                 redisClient.hincrby('online:Users', user.id, 1)
-                        //             }
-                        //     })
                     })
 
                     if(err){return rej(err)}

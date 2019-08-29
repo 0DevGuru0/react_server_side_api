@@ -1,0 +1,201 @@
+const onlineSys = require('./online');
+// const chalk = require('chalk');
+const Redis = require('redis');
+const session = require('express-session')
+let sessionMiddleware = session({
+    secret: "3f9faa8bc0e722172cc0bdafede9dsfsdff3f217474e47",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        secure:true
+    }
+});
+
+const redis = Redis.createClient();
+const  parser = require('ua-parser-js');
+
+const onlineVisitors = (httpsServer) => {
+
+    const io = require('socket.io')(httpsServer)
+    io.use((socket, next) => { sessionMiddleware(socket.request, {}, next) });
+
+    io.on('connection', client => {
+        let {browser,os} = parser(client.handshake.headers['user-agent']);
+        let browserContainer = browser.name+browser.major+":"+os.name+os.version
+
+        client.on('InterUser', reply => {
+            /*
+                - check to see the client browser has session requirement
+                    - YES| 
+                        - get value length of the user in online:Users bucket 
+                            - result = nul
+                            - result>=0
+                        - check the existence of  sign session flag
+                            - NO| increment user current Browser connection in online:Users bucket 
+                    - NO| store reply userID and reply sign flag in session 
+            */
+
+            console.log('reply::->',reply)
+            console.log('startSession:-->',client.request.session)
+            if (reply.id) {
+                client.request.session.user = reply.id
+                redis.hget('online:Users',reply.id,(err,result)=>{
+                    if(!result ){ 
+                        redis.incrby('online:users:count',1)
+                        result = '{}'
+                    }
+                    if(!reply.sign){
+                        console.log('2:1-->reEnter')
+                        result = JSON.parse(result);
+                        if(result[browserContainer]){
+                            result[browserContainer]=++result[browserContainer]
+                        }else{
+                            result[browserContainer]= 1 ;
+                        }
+                        result = JSON.stringify(result)
+                        redis.hset('online:Users',reply.id,result)
+                    }
+                })
+              
+            }
+            if (reply.sign) {
+                client.request.session.user = reply.id;
+                client.request.session.sign = reply.sign;
+                client.request.session.save();
+            }
+
+        });
+
+        client.on('disconnect', () => {
+            /*
+                - check to see the client close the browser is visitor or user
+                    - Visitor|  pass it with out any action
+                    - User|     get value of the user in online:Users bucket + grab the length oh user value
+                        - valueLength = 1 | check userCurrent connection in that browser 
+                            - connection > 1 | decrease connections
+                            - connection = 1 | delete user value from usersOnline bucket + decrease users online count
+                        - valueLength > 1 | grab the user current browser value from bucket
+                            -value > 1 | decrease the value 
+                            -value = 1 | delete the user browser from the value Object
+                    At the End stringify & store new reply on userID's bucket in online:Users 
+            */
+            if (client.request.session.user) {
+                console.log('disconnect::->')
+                console.log(client.request.session)
+                let userID = client.request.session.user
+                redis.hget('online:Users', userID, (err, reply) => {
+                    if(!reply){ reply='{}' }
+                    reply = JSON.parse(reply);
+                    let valueLength = Object.keys(reply).length
+                    let browserValue = reply[browserContainer]
+                    if( valueLength === 1 ){
+                        if(browserValue > 1 ){
+                            reply[browserContainer] = --reply[browserContainer]
+                        }
+                        if(browserValue === 1 ){
+                            redis.hdel('online:Users', userID,(err,result)=>{
+                                if(+result===1){redis.incrby('online:users:count',-1)}
+                            })
+                        }
+                    }
+                    if( valueLength > 1 ){
+                        if(browserValue > 1 ){
+                            reply[browserContainer] = --reply[browserContainer]
+                        }
+                        if(browserValue === 1 ){
+                            delete reply[browserContainer]
+                        }
+                    }
+                    reply = JSON.stringify(reply);
+                    redis.hset( 'online:Users' , userID , reply )
+                })
+            }
+        })
+
+
+        client.on('clientType', async reply => {
+            let IP = await onlineSys.fetchIP()
+            const System = new onlineSys(IP.ip)
+            if (reply === 'visitor') {
+                if (IP.ip) {
+                    System.VisitorInter()
+                    client.on('disconnect', () => {
+                        System.VisitorExit()
+                    });
+                } else {
+                    // console.log(ErrorModel(JSON.parse(IP)))
+                }
+            } else if (reply === 'user') {
+                if (IP.ip) {
+                    System.VisitorExit()
+                } else {
+                    // console.log(ErrorModel(JSON.parse(IP)))
+                }
+            }
+        })
+    
+    });
+}
+
+
+// function ErrorModel({
+//     message,
+//     sourceCode,
+//     errorDetail
+// }) {
+//     return chalk.white.bgRed.bold('\nERROR||') + `${message}\n` +
+//         `sourceCode:` + chalk.redBright.bold(`[ipInfoSystem_${sourceCode})]\n`) +
+//         `[detail]:` + chalk.redBright.bold(`${JSON.stringify(errorDetail)}`) + '\n'
+// }
+
+
+module.exports = onlineVisitors;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

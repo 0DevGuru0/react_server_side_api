@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/user';
 import PDFDocument from 'pdfkit';
 import _ from 'lodash';
-import moment from 'moment';
+import parser   from 'ua-parser-js';
 const socket = require('socket.io-client')('https://localhost:3000');
 var Redis = require("ioredis");
 var redis = new Redis();
@@ -97,13 +97,34 @@ RootController.redirectToRoot = (req,res)=>{
      res.redirect('/');
 }
 RootController.logOut = async (req,res)=>{
-    let user = req.user
-    await redis.hdel('online:Users',user.id,(err,reply)=>{
-        if(+reply===1){ 
-            redis.incrby('online:users:count',-1) 
-            socket.emit('userEntered',false)
+    /*
+        find user bucket in online:Users container 
+        -check the value of bucket length 
+            -length = 0 | it can't be happen 
+            -length = 1 | delete user from online:Users container + decrement online:users:count
+            -length > 1 | grab the user current browser value from bucket
+                    delete the user browser from the value
+            At the End stringify & store new reply on userID's bucket in online:Users 
+    */
+    let {id} = req.user
+    let {browser,os} = parser(req.headers['user-agent'])
+    let browserContainer = browser.name+browser.major+":"+os.name+os.version
+
+    await redis.hget('online:Users', id ,(err,reply)=>{
+        if(reply){
+            reply = JSON.parse(reply);
+            delete reply[browserContainer] 
+            if(Object.keys(reply).length === 0){
+                redis.hdel('online:Users', id ,(err,result)=>{ 
+                    redis.decr('online:users:count')
+                })
+            }else{
+                reply = JSON.stringify(reply)
+                redis.hset('online:Users', id , reply)
+            }
         }
-    }) 
+    })
+
     await req.logout();
     res.redirect('/');
 }
