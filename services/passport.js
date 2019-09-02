@@ -6,6 +6,7 @@ import LocalStrategy                    from 'passport-local';
 import moment                           from 'moment';
 import redis                            from 'redis';
 const redisClient = redis.createClient()
+const Day =  moment().format('YYYY/MM/D');
 
 require('dotenv').config({ path:path.resolve(process.cwd(),'config/keys/.env') })
 
@@ -24,10 +25,11 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
     if(existingUser){ 
 
         redisClient.hset('lastLogIn',existingUser.id,moment().format())
-        redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`,existingUser.id,(err,reply)=>{
-            redisClient.hsetnx('online:Users',existingUser.id,0,(err,reply)=>{
-                if(+reply===1){ redisClient.incrby('online:users:count',1) }
-            })
+        redisClient.sadd( `online:users:list:${Day}`,existingUser.id,(err,reply)=>{
+
+            if(+reply === 1){ 
+                console.log(reply)
+                redis.hincrby( 'online:users:TList' , Day , 1 ) }
         })
         await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
         return done(null,existingUser) 
@@ -44,9 +46,8 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
             isVerified:true
         })
         newUser.save((err,user,row)=>{
-            redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id )
-            redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
-                if(+reply===1){ redisClient.incrby('online:users:count',1) }
+            redisClient.sadd( `online:users:list:${Day}`, user.id,(err,reply)=>{
+                if(+reply === 1){ redis.hincrby( 'online:users:TList' , Day , 1 ) }
             })
             if(err){return done(err,null)}
             return done(null,user);

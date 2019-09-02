@@ -119,6 +119,20 @@ usersList.show = async ({ filter, show, search, page }) => {
         })
 }
 
+usersList.count =(req)=>{
+    // if(req.user){
+        console.time("concatenation");
+        return User.find()
+        .countDocuments()
+        .then(usersCount => { 
+            console.timeEnd("concatenation");
+            return {count:usersCount} })
+        .catch(e=>{ return Promise.reject(e) })
+    // }else{
+    //     return Promise.reject('you are not authorized yet!')
+    // }
+}
+
 export default usersList;
 
 /* Return schema

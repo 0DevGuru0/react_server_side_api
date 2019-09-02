@@ -38,17 +38,8 @@ const mutation = {
                 type: new GraphQLNonNull(GraphQLString)
             }
         },
-        resolve(parentValue, {
-            email,
-            password,
-            name
-        }, req) {
-            return Auth.SignUp({
-                email,
-                password,
-                name,
-                req
-            })
+        resolve(parentValue, { email, password, name }, req) {
+            return Auth.SignUp({ email, password, name, req })
         }
     },
     SignOut: {
@@ -65,23 +56,17 @@ const mutation = {
     },
     sendEmailVerify: {
         type: UserType,
-        args: {
-            email: {
-                type: new GraphQLNonNull(GraphQLString)
-            }
+        args: { 
+            email: { type: new GraphQLNonNull(GraphQLString) }
         },
-        resolve(parentValue, {
-            email
-        }, req) {
+        resolve(parentValue, { email }, req) {
             return Auth.sendEmailVerify({ email, req })
         }
     },
     sendResetPassEmail: {
         type: UserType,
-        args: {
-            email: {
-                type: new GraphQLNonNull(GraphQLString)
-            }
+        args: { 
+            email: { type: new GraphQLNonNull(GraphQLString) }
         },
         resolve(parentValue, {
             email

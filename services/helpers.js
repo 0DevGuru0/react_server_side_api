@@ -9,7 +9,7 @@ import moment                from 'moment';
 import redis                 from 'redis';
 import parser                from 'ua-parser-js';
 const redisClient = redis.createClient()
-
+const Day =  moment().format('YYYY/MM/D');
 
 /* Auth Object contain all logic for authentication */
 const Auth = {}
@@ -49,6 +49,7 @@ Auth.SignUp = ({email,password,name,req})=>{
                     if(err){ rej(err)}
                     redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
                         if(+reply === 1){ 
+                            redis.hincrby( 'online:users:TList' , Day , 1 )
                             redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
                                 if(+reply===1){ 
                                     redisClient.incrby('online:users:count',1) }
@@ -88,6 +89,7 @@ Auth.SignIn = ({email,password,req})=>{
                                         + get the reply one connection of  browser
                                 At the end resave the reply in online:user userID bucket
                         */
+                        if(+reply === 1){ redis.hincrby( 'online:users:TList' , Day , 1 ) }
 
                         redisClient.hget('online:Users' , user.id,(err,reply)=>{
                             let {browser,os} = parser(req.headers['user-agent'])
