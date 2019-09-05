@@ -13,7 +13,7 @@ const emailVerify=(user)=>{
         <body>
             <div>
                 <h1>Email Verification</h1>
-                <a href='http://localhost:3000/api/emailverify?token=${request}'>
+                <a href='https://localhost:3000/api/emailverify?token=${request}'>
                     <button>verifying my account</button>
                 </a>
             </div>

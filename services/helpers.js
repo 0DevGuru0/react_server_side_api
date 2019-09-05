@@ -47,9 +47,13 @@ Auth.SignUp = ({email,password,name,req})=>{
             return new Promise((res,rej)=>{
                 req.login(user,err=>{
                     if(err){ rej(err)}
+
                     redisClient.sadd( `online:users:list:${moment().format('YYYY/MM/D')}`, user.id,(err,reply)=>{
                         if(+reply === 1){ 
-                            redis.hincrby( 'online:users:TList' , Day , 1 )
+
+                            redisClient.hincrby( 'online:users:TList' , Day , 1 )
+                            redisClient.hincrby( 'total:users:TList'  , Day , 1 )
+
                             redisClient.hsetnx('online:Users',user.id,0,(err,reply)=>{
                                 if(+reply===1){ 
                                     redisClient.incrby('online:users:count',1) }
@@ -89,7 +93,7 @@ Auth.SignIn = ({email,password,req})=>{
                                         + get the reply one connection of  browser
                                 At the end resave the reply in online:user userID bucket
                         */
-                        if(+reply === 1){ redis.hincrby( 'online:users:TList' , Day , 1 ) }
+                        if(+reply === 1){ redisClient.hincrby( 'online:users:TList' , Day , 1 ) }
 
                         redisClient.hget('online:Users' , user.id,(err,reply)=>{
                             let {browser,os} = parser(req.headers['user-agent'])
@@ -117,33 +121,21 @@ Auth.SignIn = ({email,password,req})=>{
 
 Auth.sendEmailVerify = ({email,req})=>{
     let errors = []
-    if( validator.isEmpty(email) ){
-        errors.push('email should be insert')
-    }
-    if(!validator.isEmail(email)){
-        errors.push('type valid Email')
-    }
-    if( errors.length > 0 ){
-        throw new Error(errors)
-    }
-    return User.findOne({email}).then(user=>{
-        if ( validator.isEmpty(user) ) {
-            throw new Error('user with this email doesn\'t exist')
-        }
-
+    if( validator.isEmpty(email) ){ errors.push('email should be insert') }
+    if(!validator.isEmail(email)){ errors.push('type valid Email') }
+    if( errors.length > 0 ){ throw new Error(errors) }
+   
+    return User.findOne({email})
+    .then(user=>{
+        if ( validator.isEmpty(user.email) ) { throw new Error('user with this email doesn\'t exist') }
         sgMail.setApiKey(process.env.SEND_GRID_API_KEY);
-
-        return new Promise((res, rej) => {
+        return new Promise( (res, rej) => {
             sgMail.send(Verify_Email_Config(user), true, (err, result) => {
-                if (err) {
-                    return rej(err)
-                }
+                if (err) { return rej(err) }
                 return res({email})
             });
         })
-    }).catch(e=>{
-        throw new Error(e)
-    })
+    }).catch(e=>{ throw new Error(e) })
 }
 
 Auth.sendResetPassEmail= ({email,req})=>{
@@ -159,7 +151,7 @@ Auth.sendResetPassEmail= ({email,req})=>{
     }
     return User.findOne({email}).then(user=>{
 
-        if ( validator.isEmpty(user) ) {
+        if ( validator.isEmpty(user.email) ) {
             throw new Error('user with this email doesn\'t exist')
         }
 
@@ -179,9 +171,7 @@ Auth.sendResetPassEmail= ({email,req})=>{
 }
 
 Auth.identifyUserByToken =({token,req})=>{
-    if ( validator.isEmpty(token) ) {
-        throw new Error('token has not been received.')
-    }
+    if ( validator.isEmpty(token) ) { throw new Error('token has not been received.') }
     token = validator.trim(token)
     return new Promise((res, rej) => {
         return jwt.verify(token,'afsan|user|resetPassword|007', { subject: "resetPassword" },(err, decoded)=>{

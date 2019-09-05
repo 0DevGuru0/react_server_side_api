@@ -2,10 +2,11 @@ import jwt from 'jsonwebtoken';
 import User from '../models/user';
 import PDFDocument from 'pdfkit';
 import _ from 'lodash';
+import moment from 'moment';
 import parser   from 'ua-parser-js';
-const socket = require('socket.io-client')('https://localhost:3000');
 var Redis = require("ioredis");
 var redis = new Redis();
+const Day =  moment().format('YYYY/MM/D');
 
 const RootController = {}
 const PAGE_LIMIT_COUNT = 10;
@@ -134,28 +135,21 @@ RootController.emailVerification =  (req,res,next)=>{
     jwt.verify(token,'afsan|user|emailVerify|007', { subject: "emailVerification" },(err, decoded)=>{
         // Check to see can find email
         if(err){
-            if(err.name === 'TokenExpiredError'){
-                return res.status(500).send('request expired please try again')
-            }else{
-                return res.send({err})
-            }
+            (err.name === 'TokenExpiredError')
+                ? res.status(500).send('request expired please try again')
+                : res.send({err});
         }
-        User.findOneAndUpdate({
-                 email: decoded.email
-             }, {
-                 $set: {
-                     isVerified: true
-                 }
-             }, {
-                 new: true
-             },
-             (err, user) => {
-                 if (err) {
-                     next(new Error('can\'t find Email try again'))
-                 }
-                 res.redirect('/')
-             })
-      });
+        User.findOneAndUpdate(
+            { email: decoded.email },
+            { $set: { isVerified: true } },
+            { new: false },
+            (err, user) => {
+                if (err) { next(new Error('can\'t find Email try again')) }
+                if(!user.isVerified){ redis.hincrby('total:Verified:UserList',Day,1) }
+                res.redirect('/')
+            }
+        )
+    });
 
 }
 RootController.resetPassword =  (req,res,next)=>{

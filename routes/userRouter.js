@@ -4,7 +4,6 @@ import requireLogin from '../middlewares/requireLogin'
 import requireNotLoggedIn from '../middlewares/requireNotLogin'
 import rootCtr from '../controllers/root';
 import ipInfo from '../controllers/ipInfo';
-
 const router = express.Router();
 
 const googleAuth = passport.authenticate('google', {
@@ -60,5 +59,4 @@ router.post(
       res.end()
    }
 )
-
 export default router;

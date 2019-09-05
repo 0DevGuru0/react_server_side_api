@@ -21,20 +21,35 @@ const googleOption = {
     proxy:          true
 };
 const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshToken,profile,done)=>{
-    const existingUser = await User.findOne({googleId:profile.id});
-    if(existingUser){ 
+    const existingUserFromGoogle = await User.findOne({googleId:profile.id});
+    const existingUserFromSignUp = await User.findOne({email:profile.emails[0].value});
 
-        redisClient.hset('lastLogIn',existingUser.id,moment().format())
-        redisClient.sadd( `online:users:list:${Day}`,existingUser.id,(err,reply)=>{
-
-            if(+reply === 1){ 
-                console.log(reply)
-                redis.hincrby( 'online:users:TList' , Day , 1 ) }
+    if(existingUserFromGoogle){ 
+        redisClient.hset('lastLogIn',existingUserFromGoogle.id,moment().format())
+        redisClient.sadd( `online:users:list:${Day}`,existingUserFromGoogle.id,(err,reply)=>{
+            if(+reply === 1){ redisClient.hincrby( 'online:users:TList' , Day , 1 ) }
         })
-        await User.findByIdAndUpdate(existingUser.id,{lastLogin:moment().format()})
-        return done(null,existingUser) 
+        await User.findByIdAndUpdate(
+            existingUserFromGoogle.id,
+            {lastLogin:moment().format()},
+            {new:true}
+        )
+        return done(null,existingUserFromGoogle) 
+        
+    }else if(existingUserFromSignUp){
+        redisClient.hset('lastLogIn',existingUserFromSignUp.id,moment().format())
+        redisClient.sadd( `online:users:list:${Day}`,existingUserFromSignUp.id,(err,reply)=>{
+            if(+reply === 1){ redisClient.hincrby( 'online:users:TList' , Day , 1 ) }
+        })
+        await User.findByIdAndUpdate(
+            existingUserFromSignUp.id,
+            { lastLogin:moment().format(), $set:{googleId:profile.id} },
+            {new:true}
+        )
+        return done(null,existingUserFromSignUp) 
 
-    }else{
+    }else {
+        
         const newUser = new User({
             name:profile.displayName,
             email:profile.emails[0].value,
@@ -47,7 +62,10 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
         })
         newUser.save((err,user,row)=>{
             redisClient.sadd( `online:users:list:${Day}`, user.id,(err,reply)=>{
-                if(+reply === 1){ redis.hincrby( 'online:users:TList' , Day , 1 ) }
+                if(+reply === 1){ 
+                    redisClient.hincrby( 'online:users:TList' , Day , 1 )
+                    redisClient.hincrby( 'total:users:TList'  , Day , 1 )
+                }
             })
             if(err){return done(err,null)}
             return done(null,user);

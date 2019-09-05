@@ -26,6 +26,12 @@ const RootQueryType = new GraphQLObjectType({
             resolve(parentValue, args , req) {
                 return usersList.count(req)
             }
+        },
+        verifiedUsersCount:{
+            type: UsersCount,
+            resolve(parentValue, args , req) {
+                return usersList.verifiedCount(req)
+            }
         }
     })
 

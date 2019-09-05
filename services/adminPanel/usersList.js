@@ -51,21 +51,20 @@ usersList.show = async ({ filter, show, search, page }) => {
         return { $and: [search_content, onlinesFilter] }
     }
     let mainQuery = await DatabaseQuery();
-
     //work on mongoDB
     return User.find(mainQuery)
         .countDocuments()
         .then(usersCount => {
             totalUsers = usersCount;
             // if total Users came to 0
-            if (totalUsers === 0 && search !== false) {
-                return Promise.reject('No user found with this credential!')
-            }
-            if (page > Math.ceil(totalUsers / show)) {
-                page = Math.ceil(totalUsers / show);
-            }
+            if (totalUsers === 0 && search !== false) { return Promise.reject('No user found with this credential!') }
+            if (totalUsers === 0 ) { return Promise.reject('No User Found!') }
+
+            if (page > Math.ceil(totalUsers / show)) { page = Math.ceil(totalUsers / show); }
+
+            let skip = page !== 0 ? (page - 1) * show :  0 ;
             return User.find(mainQuery)
-                .skip((page - 1) * show)
+                .skip(skip)
                 .sort(sortBy())
                 .limit(show)
         })
@@ -121,11 +120,20 @@ usersList.show = async ({ filter, show, search, page }) => {
 
 usersList.count =(req)=>{
     // if(req.user){
-        console.time("concatenation");
         return User.find()
         .countDocuments()
         .then(usersCount => { 
-            console.timeEnd("concatenation");
+            return {count:usersCount} })
+        .catch(e=>{ return Promise.reject(e) })
+    // }else{
+    //     return Promise.reject('you are not authorized yet!')
+    // }
+}
+usersList.verifiedCount =(req)=>{
+    // if(req.user){
+        return User.find({'isVerified':true})
+        .countDocuments()
+        .then(usersCount => { 
             return {count:usersCount} })
         .catch(e=>{ return Promise.reject(e) })
     // }else{

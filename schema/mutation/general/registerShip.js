@@ -60,6 +60,7 @@ const mutation = {
             email: { type: new GraphQLNonNull(GraphQLString) }
         },
         resolve(parentValue, { email }, req) {
+            // console.log(Auth.sendEmailVerify({ email, req }))
             return Auth.sendEmailVerify({ email, req })
         }
     },
