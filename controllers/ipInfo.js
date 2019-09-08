@@ -25,13 +25,12 @@ const ipgeolocationApi = new IPGeolocationAPI( process.env.GEOLOCATION_IP_ADDRES
 const ipInfo = {};
 
 let Day = moment().format('YYYY/MM/D');
+let Month = moment().format('M');
 
 ipInfo.storeSystem = async (cb, ip) => {
   //2| calculate remaining time to store IPs from redis memory to mongodb
   var now = new Date();
-  var storeTime =
-    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 24, 0, 0, 0) -
-    now;
+  var storeTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 24, 0, 0, 0) - now;
   if (storeTime < 0) {
     storeTime += 86400000;
   }
@@ -107,6 +106,7 @@ ipInfo.storeSystem = async (cb, ip) => {
     let targetData = [
       'continent_name',
       'country_name',
+      'country_code2',
       'state_prov',
       'district',
       'latitude',
@@ -129,16 +129,33 @@ ipInfo.storeSystem = async (cb, ip) => {
         );
       }
       delete ipData.ip;
+      let country = ipData.country_code2 ; 
+      let city = ipData.state_prov+":"+ipData.latitude+":"+ipData.longitude; 
       ipData = {
         ...ipData,
         currency: ipData.currency['code']
       };
       ipData = JSON.stringify(ipData);
       redisClient.hset(`online:visitors:list:${Day}`, ip, ipData,(err,reply)=>{
-        if(+reply === 1){
+        if(+reply === 1){ 
           redisClient.sadd(`online:visitors:Clist:${Day}`,ip)
+          // performance issue
+          // console.time('start1')
+          // redisClient.hget(`visitors:state:Month:${Month}`, country ,(err,reply)=>{
+          //   reply = JSON.parse(reply)
+          //   if(!reply){ 
+          //     reply ={}
+          //     reply[city] = 1 
+          //   }else{ reply[city]=++reply[city] }
+          //   reply = JSON.stringify(reply)
+          //   redisClient.hset(`visitors:state:Month:${Month}`,country,reply)
+          //   console.timeEnd('start1')
+          // })
+          redisClient.hincrby(`visitors:state:month:${Month}`,`K:${country}`,1)
+          redisClient.hincrby(`visitors:state:month:${Month}`,`C:${city}`,1)
         }
       });
+
     }, geolocationParams);
   });
 };
