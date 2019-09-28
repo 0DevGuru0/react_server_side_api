@@ -63,12 +63,14 @@ const GoogleAuth = new GoogleStrategy(googleOption,async (accessToken,refreshTok
         newUser.save((err,user,row)=>{
             redisClient.sadd( `online:users:list:${Day}`, user.id,(err,reply)=>{
                 if(+reply === 1){ 
+                    redisClient.hincrby( 'total:Verified:UserList', Day , 1 )
                     redisClient.hincrby( 'online:users:TList' , Day , 1 )
                     redisClient.hincrby( 'total:users:TList'  , Day , 1 )
                 }
             })
-            if(err){return done(err,null)}
+            if(err){return done(err,null)}else{
             return done(null,user);
+            }
         })
     }
 });

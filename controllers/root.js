@@ -5,7 +5,12 @@ import _ from 'lodash';
 import moment from 'moment';
 import parser   from 'ua-parser-js';
 var Redis = require("ioredis");
-var redis = new Redis();
+var redis = new Redis({ 
+    retryStrategy: function(times) {
+        var delay = Math.min(times * 50, 2000);
+        return delay;
+    }
+});
 const Day =  moment().format('YYYY/MM/D');
 
 const RootController = {}

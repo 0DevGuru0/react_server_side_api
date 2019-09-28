@@ -1,7 +1,12 @@
 import User          from '../../models/user';
 import _             from 'lodash';
 const Redis = require("ioredis");
-const redis = new Redis();
+const redis = new Redis({
+     retryStrategy: function(times) {
+        var delay = Math.min(times * 50, 2000);
+        return delay;
+    }
+});
 
 
 const usersList = {};

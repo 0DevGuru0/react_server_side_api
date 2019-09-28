@@ -2,7 +2,12 @@ import mongoose from 'mongoose';
 import redis from 'redis';
 import util from 'util';
 
-const client = redis.createClient();
+const client = redis.createClient({retry_strategy: function (options) {
+        if (options.error && options.error.code === 'ECONNREFUSED') { return new Error('The server refused the connection'); }
+        if (options.total_retry_time > 1000 * 60 * 60) { return new Error('Retry time exhausted'); }
+        if (options.attempt > 10) { return undefined; }
+        return Math.min(options.attempt * 100, 3000);
+    }});
 const exec = mongoose.Query.prototype.exec;
 client.hget = util.promisify(client.hget);
 

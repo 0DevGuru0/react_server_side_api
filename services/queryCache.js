@@ -3,7 +3,14 @@ const redis = require('redis');
 const util = require('util');
 const keys = require('../config/keys');
 
-const client = redis.createClient(keys.redisUrl);
+const client = redis.createClient(keys.redisUrl,{
+  retry_strategy: function (options) {
+        if (options.error && options.error.code === 'ECONNREFUSED') { return new Error('The server refused the connection'); }
+        if (options.total_retry_time > 1000 * 60 * 60) { return new Error('Retry time exhausted'); }
+        if (options.attempt > 10) { return undefined; }
+        return Math.min(options.attempt * 100, 3000);
+    }
+});
 client.hget = util.promisify(client.hget);
 const exec = mongoose.Query.prototype.exec;
 

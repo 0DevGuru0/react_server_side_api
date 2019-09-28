@@ -1,49 +1,54 @@
-import redis from 'redis';
-import moment from 'moment';
-import chalk from 'chalk';
-import IP_DB from '../models/visitors/ips';
-import IPINFO_DB from '../models/visitors/ipInfo';
-import path from 'path';
-require('dotenv').config({
-  path: path.resolve(process.cwd(), 'config/keys/.env')
+import redis from "redis";
+import moment from "moment";
+import chalk from "chalk";
+import IP_DB from "../models/visitors/ips";
+import IPINFO_DB from "../models/visitors/ipInfo";
+import path from "path";
+require("dotenv").config({
+  path: path.resolve(process.cwd(), "config/keys/.env")
 });
 
 const redisClient = redis.createClient({
   retry_strategy: () => 1000
 });
-redisClient.on('error', err => {
+redisClient.on("error", err => {
   console.log(
-    chalk.bgRedBright.bold('ERROR:') +
-      chalk.bold('connecting to redis encountered with issue.\n')
+    chalk.bgRedBright.bold("ERROR:") +
+      chalk.bold("connecting to redis encountered with issue.\n")
   );
 });
 
-const GeolocationParams = require('ip-geolocation-api-javascript-sdk/GeolocationParams.js');
-const IPGeolocationAPI = require('ip-geolocation-api-javascript-sdk/IPGeolocationAPI');
-const ipgeolocationApi = new IPGeolocationAPI( process.env.GEOLOCATION_IP_ADDRESS );
+const GeolocationParams = require("ip-geolocation-api-javascript-sdk/GeolocationParams.js");
+const IPGeolocationAPI = require("ip-geolocation-api-javascript-sdk/IPGeolocationAPI");
+const ipgeolocationApi = new IPGeolocationAPI(
+  process.env.GEOLOCATION_IP_ADDRESS
+);
 
 const ipInfo = {};
 
-let Day = moment().format('YYYY/MM/D');
-let Month = moment().format('M');
+let Day = moment().format("YYYY/MM/D");
+let Month = moment().format("M");
+let Year = moment().format("YYYY");
 
 ipInfo.storeSystem = async (cb, ip) => {
   //2| calculate remaining time to store IPs from redis memory to mongodb
   var now = new Date();
-  var storeTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 24, 0, 0, 0) - now;
+  var storeTime =
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), 24, 0, 0, 0) -
+    now;
   if (storeTime < 0) {
     storeTime += 86400000;
   }
   setInterval(() => {
     let lastDay = moment()
-      .subtract(1, 'day')
-      .format('YYYY/MM/D');
+      .subtract(1, "day")
+      .format("YYYY/MM/D");
     redisClient.hgetall(`online:visitors:list:${lastDay}`, (error, result) => {
       if (error) {
         return cb(
           ErrorModel({
-            message: 'Something went wrong on redis',
-            sourceCode: 'FetchVisitorDataFromRedis',
+            message: "Something went wrong on redis",
+            sourceCode: "FetchVisitorDataFromRedis",
             errorDetail: error
           })
         );
@@ -51,9 +56,9 @@ ipInfo.storeSystem = async (cb, ip) => {
       if (result == null) {
         return cb(
           ErrorModel({
-            message: 'receiving null as result for redis query ',
-            sourceCode: 'FetchVisitorDataFromRedis',
-            errorDetail: '{queryResult:null}'
+            message: "receiving null as result for redis query ",
+            sourceCode: "FetchVisitorDataFromRedis",
+            errorDetail: "{queryResult:null}"
           })
         );
       }
@@ -79,8 +84,8 @@ ipInfo.storeSystem = async (cb, ip) => {
         return cb(
           ErrorModel({
             message:
-              'something went wrong on storing fetched data from redis on mongoDB',
-            sourceCode: 'StoreFetchedDataOnDB',
+              "something went wrong on storing fetched data from redis on mongoDB",
+            sourceCode: "StoreFetchedDataOnDB",
             errorDetail: errors
           })
         );
@@ -93,8 +98,8 @@ ipInfo.storeSystem = async (cb, ip) => {
     if (error) {
       return cb(
         ErrorModel({
-          message: 'Something went wrong on redis',
-          sourceCode: 'FetchVisitorDataFromRedis',
+          message: "Something went wrong on redis",
+          sourceCode: "FetchVisitorDataFromRedis",
           errorDetail: error
         })
       );
@@ -104,72 +109,63 @@ ipInfo.storeSystem = async (cb, ip) => {
     }
     let geolocationParams = new GeolocationParams();
     let targetData = [
-      'continent_name',
-      'country_name',
-      'country_code2',
-      'state_prov',
-      'district',
-      'latitude',
-      'longitude',
-      'calling_code',
-      'languages',
-      'organization',
-      'currency'
+      "continent_name",
+      "country_name",
+      "country_code2",
+      "state_prov",
+      "district",
+      "latitude",
+      "longitude",
+      "calling_code",
+      "languages",
+      "organization",
+      "currency"
     ];
-    geolocationParams.setFields(targetData.join(','));
+    geolocationParams.setFields(targetData.join(","));
     ipgeolocationApi.getGeolocation(ipData => {
       if (ipData.message) {
         return cb(
           ErrorModel({
             message:
-              'something went wrong on fetching IP information from protocol',
-            sourceCode: 'fetchInfoFromProtocol',
+              "something went wrong on fetching IP information from protocol",
+            sourceCode: "fetchInfoFromProtocol",
             errorDetail: ipData.message
           })
         );
       }
       delete ipData.ip;
-      let country = ipData.country_code2 ; 
-      let city = ipData.state_prov+":"+ipData.latitude+":"+ipData.longitude; 
+      let country = ipData.country_code2;
+      let countryName = ipData.country_name;
+      let city = ipData.state_prov;
       ipData = {
         ...ipData,
-        currency: ipData.currency['code']
+        currency: ipData.currency["code"]
       };
       ipData = JSON.stringify(ipData);
-      redisClient.hset(`online:visitors:list:${Day}`, ip, ipData,(err,reply)=>{
-        if(+reply === 1){ 
-          redisClient.sadd(`online:visitors:Clist:${Day}`,ip)
-          // performance issue
-          // console.time('start1')
-          // redisClient.hget(`visitors:state:Month:${Month}`, country ,(err,reply)=>{
-          //   reply = JSON.parse(reply)
-          //   if(!reply){ 
-          //     reply ={}
-          //     reply[city] = 1 
-          //   }else{ reply[city]=++reply[city] }
-          //   reply = JSON.stringify(reply)
-          //   redisClient.hset(`visitors:state:Month:${Month}`,country,reply)
-          //   console.timeEnd('start1')
-          // })
-          redisClient.hincrby(`visitors:state:month:${Month}`,`K:${country}`,1)
-          redisClient.hincrby(`visitors:state:month:${Month}`,`C:${city}`,1)
+      redisClient.hset( `online:visitors:list:${Day}`, ip, ipData, (err, reply) => {
+          if (+reply === 1) {
+            redisClient.sadd(`online:visitors:Clist:${Day}`, ip);
+            redisClient
+              .multi()
+              .hincrby( `visitors:state:country:month:${Year}:${Month}`, country, 1 )
+              .hincrby(`visitors:state:country:year:${Year}`, country, 1)
+              .exec();
+            redisClient.hget( `visitors:state:city:month:${Year}:${Month}`, country, (err, reply) => {
+              if(typeof reply === "string"){ reply = JSON.parse(reply) }
+              if (!reply) { reply = {}; }
+              reply[city] = reply[city] ? reply[city] + 1 : 1;
+              redisClient.hset( `visitors:state:city:month:${Year}:${Month}`, country, JSON.stringify(reply) );
+              redisClient.hset( `visitors:state:city:year:${Year}`, country, JSON.stringify(reply) );
+            });
+          }
         }
-      });
-
+      );
     }, geolocationParams);
   });
 };
 
 function ErrorModel({ message, sourceCode, errorDetail }) {
-  return (
-    chalk.white.bgRed.bold('\nERROR||') +
-    `${message}\n` +
-    `sourceCode:` +
-    chalk.redBright.bold(`[ipInfoSystem_${sourceCode})]\n`) +
-    `[detail]:` +
-    chalk.redBright.bold(`${JSON.stringify(errorDetail)}`) +
-    '\n'
-  );
+  return ( chalk.white.bgRed.bold("\nERROR||") + `${message}\n` + `sourceCode:` + chalk.redBright.bold(`[ipInfoSystem_${sourceCode})]\n`) + `[detail]:` + chalk.redBright.bold(`${JSON.stringify(errorDetail)}`) + "\n" );
 }
 
 export default ipInfo;
