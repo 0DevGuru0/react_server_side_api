@@ -4,11 +4,11 @@ import chalk from "chalk";
 import path from "path";
 import asyncRedis from "async-redis";
 require("dotenv").config({
-	path: path.resolve(process.cwd(), "config/keys/.env")
+	path: path.resolve(process.cwd(), "config/keys/.env"),
 });
 
 const redisClient = redisPre.createClient({
-	retry_strategy: () => 1000
+	retry_strategy: () => 1000,
 });
 redisClient.on("error", err =>
 	console.log(
@@ -42,7 +42,7 @@ ipInfo.storeSystem = async (cb, ip) => {
 		"calling_code",
 		"languages",
 		"organization",
-		"currency"
+		"currency",
 	];
 
 	geolocationParams.setFields(targetData.join(","));
@@ -52,7 +52,7 @@ ipInfo.storeSystem = async (cb, ip) => {
 				ErrorModel({
 					message: "something went wrong on fetching IP information from protocol",
 					sourceCode: "fetchInfoFromProtocol",
-					errorDetail: ipData.message
+					errorDetail: ipData.message,
 				})
 			);
 		}
@@ -61,7 +61,7 @@ ipInfo.storeSystem = async (cb, ip) => {
 		let city = ipData.state_prov;
 		ipData = JSON.stringify({
 			...ipData,
-			currency: ipData.currency["code"]
+			currency: ipData.currency["code"],
 		});
 		let reply = null;
 		try {
@@ -77,12 +77,10 @@ ipInfo.storeSystem = async (cb, ip) => {
 				`visitors:state:city:month:${Year}:${Month}`,
 				country
 			);
-			if (typeof cityMonth === "string") {
-				cityMonth = JSON.parse(cityMonth);
-			}
-			if (!cityMonth) {
-				cityMonth = {};
-			}
+			if (typeof cityMonth === "string") cityMonth = JSON.parse(cityMonth);
+
+			if (!cityMonth) cityMonth = {};
+
 			cityMonth[city] = cityMonth[city] ? cityMonth[city] + 1 : 1;
 			redisClient.hset(
 				`visitors:state:city:month:${Year}:${Month}`,

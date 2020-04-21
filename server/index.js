@@ -12,12 +12,12 @@ import hpp from "hpp";
 import userRouter from "../routes/userRouter";
 import rootRouter from "../routes/rootRouter";
 import http from "http";
-// import redisAdapter from 'socket.io-redis';
 import morgan from "morgan";
 import rfs from "rotating-file-stream";
 import expressGraphql from "express-graphql";
 import schema from "../schema";
 import "../models/user";
+
 require("../services/passport");
 /////////////////START DATABASE CONFIG///////////////////////////
 mongoose.connect(process.env.DB_ADDRESS, {
@@ -65,7 +65,7 @@ app.use(
 		extended: true
 	})
 );
-app.use(hpp());
+// app.use(hpp());
 app.disable("x-powered-by");
 const whiteList = process.env.CORS_WHITE_LIST;
 const corsOptionsDelegate = {
@@ -94,7 +94,7 @@ const expressSession = session({
 	}
 });
 app.use(expressSession);
-app.use(xssFilter());
+// app.use(xssFilter());
 app.use(passport.initialize());
 app.use(passport.session());
 ////////////////START GRAPHQL CONFIG///////////////////////////
