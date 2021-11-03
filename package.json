@@ -62,7 +62,7 @@
 		"socket.io-redis": "^5.2.0",
 		"tough-cookie": "^3.0.1",
 		"ua-parser-js": "^0.7.20",
-		"validator": "^10.11.0",
+		"validator": "^13.7.0",
 		"webpack": "^4.36.1",
 		"webpack-cli": "^3.3.6",
 		"webpack-node-externals": "^1.7.2",
