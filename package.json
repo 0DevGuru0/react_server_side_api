@@ -33,7 +33,7 @@
 		"eslint-config-airbnb": "^17.1.1",
 		"eslint-config-react-app": "^4.0.1",
 		"eslint-loader": "^2.2.1",
-		"express": "^4.16.4",
+		"express": "^4.17.3",
 		"express-graphql": "^0.7.1",
 		"express-session": "^1.15.6",
 		"extend": "^3.0.2",
