@@ -43,7 +43,7 @@
 		"ioredis": "^4.9.5",
 		"ip-geolocation-api-javascript-sdk": "^1.0.7",
 		"json-stringify-safe": "^5.0.1",
-		"jsonwebtoken": "^8.5.1",
+		"jsonwebtoken": "^9.0.0",
 		"lodash": "^4.17.15",
 		"moment": "^2.24.0",
 		"mongoose": "^5.4.18",
